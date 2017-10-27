@@ -97,9 +97,9 @@ check_sys(){
 #检查Centos版本
 check_version(){
 	if [[ -s /etc/redhat-release ]]; then
-		version=`cat /etc/redhat-release | awk 'NR==1{print $3}' | cut -b 1`
+		version=`grep -oE  "[0-9.]+" /etc/redhat-release | cut -d . -f 1`
 	else
-		version=`cat /etc/issue | awk 'NR==1{print $3}' | cut -b 1`
+		version=`grep -oE  "[0-9.]+" /etc/issue | cut -d . -f 1`
 	fi
 	bit=`uname -m`
 	if [[ ${bit} = "x86_64" ]]; then
