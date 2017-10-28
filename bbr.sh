@@ -289,7 +289,7 @@ check_version
 action=$1
 [ -z $1 ] && action=install
 case "$action" in
-	install|sta)
+	install|start)
 	${action}
 	;;
 	*)
