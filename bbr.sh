@@ -27,7 +27,7 @@ installbbr(){
 	fi
 	detele_kernel
 	BBR_grub
-	echo -e "${Tip} 重启VPS后，请重新运行脚本开启魔改BBR ${Red_background_prefix} bash bbr.sh startbbrmod ${Font_color_suffix}"
+	echo -e "${Tip} 重启VPS后，请重新运行脚本开启魔改BBR ${Red_background_prefix} bash bbr.sh start ${Font_color_suffix}"
 	stty erase '^H' && read -p "需要重启VPS后，才能开启BBR，是否现在重启 ? [Y/n] :" yn
 	[ -z "${yn}" ] && yn="y"
 	if [[ $yn == [Yy] ]]; then
