@@ -276,24 +276,17 @@ detele_kernel(){
 	fi
 }
 
-start(){
-	startbbrmod
-}
-
-install(){
-	check_sys_bbrmod
-}
 
 check_sys
 check_version
 action=$1
-[ -z $1 ] && action=install
+[ -z $1 ] && action=check_sys_bbrmod
 case "$action" in
-	install|start)
+	check_sys_bbrmod|startbbrmod)
 	${action}
 	;;
 	*)
 	echo "输入错误 !"
-	echo "用法: { install | start }"
+	echo "用法: { check_sys_bbrmod | startbbrmod }"
 	;;
 esac
