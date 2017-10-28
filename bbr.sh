@@ -229,7 +229,7 @@ debian_bbr(){
 	dpkg -i linux-headers-4.11.8-all.deb
 	dpkg -i linux-headers-4.11.8.deb
 	dpkg -i linux-image-4.11.8.deb
-	cd .. && rm -rf bbrmod
+	cd .. && rm -rf bbr
 }
 
 #删除多余内核
