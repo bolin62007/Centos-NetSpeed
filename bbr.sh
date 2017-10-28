@@ -3,12 +3,13 @@ PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin
 export PATH
 
 #=================================================
-#	System Required: Centos 6/7
-#	Description: BBR+BBRMOD+锐速
+#	System Required: CentOS 6+,Debian7+,Ubuntu12+
+#	Description: BBR+BBR魔改版+Lotsever
 #	Version: 1.0
 #	Author: 千影
 #	Blog: https://www.94ish.me/
 #=================================================
+
 sh_ver="1.0.0"
 github="raw.githubusercontent.com/chiakge/Centos-NetSpeed/master"
 
@@ -19,18 +20,19 @@ Tip="${Green_font_prefix}[注意]${Font_color_suffix}"
 
 #安装BBR内核
 installbbr(){
-	rpm --import http://${github}/bbr/centos/RPM-GPG-KEY-elrepo.org
-	yum install -y http://${github}/bbr/centos/${version}/${bit}/kernel-ml-4.11.8.rpm
-	yum remove -y kernel-headers
-	yum install -y http://${github}/bbr/centos/${version}/${bit}/kernel-ml-headers-4.11.8.rpm
-	yum install -y http://${github}/bbr/centos/${version}/${bit}/kernel-ml-devel-4.11.8.rpm
+	if [[ "${release}" == "centos" ]]; then
+		centos_bbr
+	elif [[ "${release}" == "debian" || "${release}" == "ubuntu" ]]; then
+		debian_bbr
+	fi
+	detele_kernel
 	BBR_grub
-	echo -e "${Tip} 重启VPS后，请重新运行脚本开启魔改BBR ${Red_background_prefix} bash bbr.sh start ${Font_color_suffix}"
+	echo -e "${Tip} 重启VPS后，请重新运行脚本开启魔改BBR ${Red_background_prefix} bash bbr.sh startbbrmod ${Font_color_suffix}"
 	stty erase '^H' && read -p "需要重启VPS后，才能开启BBR，是否现在重启 ? [Y/n] :" yn
 	[ -z "${yn}" ] && yn="y"
 	if [[ $yn == [Yy] ]]; then
-			echo -e "${Info} VPS 重启中..."
-			reboot
+		echo -e "${Info} VPS 重启中..."
+		reboot
 	fi
 }
 
@@ -55,16 +57,34 @@ BBR_grub(){
     fi
 }
 
-startbbr(){
-	yum install -y make gcc
-	mkdir bbrmod && cd bbrmod
-	wget http://${github}/bbr/tcp_tsunami.c
-	echo "obj-m:=tcp_tsunami.o" > Makefile
-	make -C /lib/modules/$(uname -r)/build M=`pwd` modules CC=/usr/bin/gcc
-	chmod +x ./tcp_tsunami.ko
-	cp -rf ./tcp_tsunami.ko /lib/modules/$(uname -r)/kernel/net/ipv4
-	insmod tcp_tsunami.ko
-	depmod -a
+#编译并启用BBR魔改
+startbbrmod(){
+	if [[ "${release}" == "centos" ]]; then
+		yum install -y make gcc
+		mkdir bbrmod && cd bbrmod
+		wget -N --no-check-certificate http://${github}/bbr/tcp_tsunami.c
+		echo "obj-m:=tcp_tsunami.o" > Makefile
+		make -C /lib/modules/$(uname -r)/build M=`pwd` modules CC=/usr/bin/gcc
+		chmod +x ./tcp_tsunami.ko
+		cp -rf ./tcp_tsunami.ko /lib/modules/$(uname -r)/kernel/net/ipv4
+		insmod tcp_tsunami.ko
+		depmod -a
+	else
+		apt-get update
+		if [[ "${release}" == "ubuntu" && "${version}" = "14" ]]; then
+			apt-get -y install build-essential
+			apt-get -y install software-properties-common
+			add-apt-repository ppa:ubuntu-toolchain-r/test -y
+			apt-get update
+		fi
+		apt-get -y install make gcc-4.9
+		wget -N --no-check-certificate http://${github}/bbr/tcp_tsunami.c
+		echo "obj-m:=tcp_tsunami.o" > Makefile
+		make -C /lib/modules/$(uname -r)/build M=`pwd` modules CC=/usr/bin/gcc-4.9
+		install tcp_tsunami.ko /lib/modules/$(uname -r)/kernel
+		cp -rf ./tcp_tsunami.ko /lib/modules/$(uname -r)/kernel/net/ipv4
+		depmod -a
+	fi
 	
 	sed -i '/net.core.default_qdisc/d' /etc/sysctl.conf
     sed -i '/net.ipv4.tcp_congestion_control/d' /etc/sysctl.conf
@@ -72,7 +92,7 @@ startbbr(){
 	echo "net.ipv4.tcp_congestion_control=tsunami" >> /etc/sysctl.conf
 	sysctl -p
     cd  && rm -rf bbrmod
-	echo "魔改版BBR启动成功！"
+	echo -e "${Info}魔改版BBR启动成功！"
 }
 
 #检查系统
@@ -106,21 +126,156 @@ check_version(){
 		bit="x64"
 	else
 		bit="x32"
-	fi	
+	fi
 }
 
+#检查安装bbr魔改版的系统要求
+check_sys_bbrmod(){
+	check_sys
+	check_version
+	if [[ "${release}" == "centos" ]]; then
+		if [[ ${version} -gt "5" ]]; then
+			installbbr
+		else
+			echo -e "${Error} BBR魔改版不支持当前系统 ${release} ${version} ${bit} !" && exit 1
+		fi
+	elif [[ "${release}" == "debian" ]]; then
+		if [[ ${version} -gt "7" ]]; then
+			installbbr
+		else
+			echo -e "${Error} BBR魔改版不支持当前系统 ${release} ${version} ${bit} !" && exit 1
+		fi
+	elif [[ "${release}" == "ubuntu" ]]; then
+		if [[ ${version} -ge "14" ]]; then
+			installbbr
+		else
+			echo -e "${Error} BBR魔改版不支持当前系统 ${release} ${version} ${bit} !" && exit 1
+		fi
+	else
+		echo -e "${Error} BBR魔改版不支持当前系统 ${release} ${version} ${bit} !" && exit 1
+	fi
+}
+
+#检查安装bbr的系统要求
+check_sys_bbr(){
+	check_sys
+	check_version
+	if [[ "${release}" == "centos" ]]; then
+		if [[ ${version} -ge "6" ]]; then
+			installbbr
+		else
+			echo -e "${Error} BBR不支持当前系统 ${release} ${version} ${bit} !" && exit 1
+		fi
+	elif [[ "${release}" == "debian" ]]; then
+		if [[ ${version} -ge "7" ]]; then
+			installbbr
+		else
+			echo -e "${Error} BBR不支持当前系统 ${release} ${version} ${bit} !" && exit 1
+		fi
+	elif [[ "${release}" == "ubuntu" ]]; then
+		if [[ ${version} -ge "12" ]]; then
+			installbbr
+		else
+			echo -e "${Error} BBR不支持当前系统 ${release} ${version} ${bit} !" && exit 1
+		fi
+	else
+		echo -e "${Error} BBR不支持当前系统 ${release} ${version} ${bit} !" && exit 1
+	fi
+}
+
+#检查安装Lotsever的系统要求
+check_sys_Lotsever(){
+	check_sys
+	check_version
+	if [[ "${release}" == "centos" ]]; then
+		if [[ ${version} -ge "6" ]]; then
+			Lotsever
+		else
+			echo -e "${Error} Lotsever不支持当前系统 ${release} ${version} ${bit} !" && exit 1
+		fi
+	elif [[ "${release}" == "debian" ]]; then
+		if [[ ${version} -ge "7" ]]; then
+			Lotsever
+		else
+			echo -e "${Error} Lotsever不支持当前系统 ${release} ${version} ${bit} !" && exit 1
+		fi
+	elif [[ "${release}" == "ubuntu" ]]; then
+		if [[ ${version} -ge "12" ]]; then
+			Lotsever
+		else
+			echo -e "${Error} Lotsever不支持当前系统 ${release} ${version} ${bit} !" && exit 1
+		fi
+	else
+		echo -e "${Error} Lotsever不支持当前系统 ${release} ${version} ${bit} !" && exit 1
+	fi
+}
+
+#centos更换bbr内核
+centos_bbr(){
+	rpm --import http://${github}/bbr/${release}/RPM-GPG-KEY-elrepo.org
+	yum install -y http://${github}/bbr/${release}/${version}/${bit}/kernel-ml-4.11.8.rpm
+	yum remove -y kernel-headers
+	yum install -y http://${github}/bbr/${release}/${version}/${bit}/kernel-ml-headers-4.11.8.rpm
+	yum install -y http://${github}/bbr/${release}/${version}/${bit}/kernel-ml-devel-4.11.8.rpm
+}
+
+#Debian/ubuntu更换bbr内核
+debian_bbr(){
+	mkdir bbr && cd bbr
+	wget -N --no-check-certificate http://${github}/bbr/debian-ubuntu/linux-headers-4.11.8-all.deb
+	wget -N --no-check-certificate http://${github}/bbr/debian-ubuntu/${bit}/linux-headers-4.11.8.deb
+	wget -N --no-check-certificate http://${github}/bbr/debian-ubuntu/${bit}/linux-image-4.11.8.deb
+	
+	dpkg -i linux-headers-4.11.8-all.deb
+	dpkg -i linux-headers-4.11.8.deb
+	dpkg -i linux-image-4.11.8.deb
+	cd  && rm -rf bbrmod
+}
+
+#删除多余内核
+detele_kernel(){
+	if [[ "${release}" == "centos" ]]; then
+		kernel_version=`uname -r | cut -d- -f1`
+		rpm_total=`rpm -qa | grep kernel | grep -v "4.11.8" | grep -v "noarch" | wc -l`
+		if [ "${rpm_total}" > "1" ]; then
+			echo -e "检测到 ${rpm_total} 个其余内核，开始卸载..."
+			for((integer = 1; integer <= ${rpm_total}; integer++)); do
+				rpm_del=`rpm -qa | grep kernel | grep -v "4.11.8" | grep -v "noarch" | head -${integer}`
+				echo -e "开始卸载 ${rpm_del} 内核..."
+				yum remove -y ${rpm_del}>/dev/null 2>&1
+				echo -e "卸载 ${rpm_del} 内核卸载完成，继续..."
+			done
+			rpm_total=`rpm -qa | grep kernel | grep -v "4.11.8" | grep -v "noarch" | wc -l`
+			if [ "${rpm_total}" = "0" ]; then
+				echo -e "内核卸载完毕，继续..."
+			else
+				echo -e " 内核卸载异常，请检查 !" && exit 1
+			fi
+		else
+			echo -e " 检测到 内核 数量不正确，请检查 !" && exit 1
+		fi
+	elif [[ "${release}" == "debian" || "${release}" == "ubuntu" ]]; then
+		deb_total=`dpkg -l | grep linux-image | awk '{print $2}' | grep -v "4.11.8" | wc -l`
+		if [ "${deb_total}" > "1" ]; then
+			echo -e "检测到 ${deb_total} 个其余内核，开始卸载..."
+			for((integer = 1; integer <= ${deb_total}; integer++)); do
+				deb_del=`dpkg -l|grep linux-image | awk '{print $2}' | grep -v "4.11.8" | head -${integer}`
+				echo -e "开始卸载 ${deb_del} 内核..."
+				apt-get purge -y ${deb_del}>/dev/null 2>&1
+				echo -e "卸载 ${deb_del} 内核卸载完成，继续..."
+			done
+			deb_total=`dpkg -l|grep linux-image | awk '{print $2}' | grep -v "4.11.8" | wc -l`
+			if [ "${deb_total}" = "0" ]; then
+				echo -e "内核卸载完毕，继续..."
+			else
+				echo -e " 内核卸载异常，请检查 !" && exit 1
+			fi
+		else
+			echo -e " 检测到 内核 数量不正确，请检查 !" && exit 1
+		fi
+	fi
+}
 
 check_sys
 check_version
-[[ ${release} != "centos" ]]  && echo -e "${Error} 本脚本不支持当前系统 ${release} ${version} ${bit} !" && exit 1
-action=$1
-[ -z $1 ] && action=install
-case "$action" in
-	install|start)
-	${action}bbr
-	;;
-	*)
-	echo "输入错误 !"
-	echo "用法: { install | start }"
-	;;
-esac
+check_sys_bbrmod
