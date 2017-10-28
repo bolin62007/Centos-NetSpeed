@@ -229,7 +229,7 @@ debian_bbr(){
 	dpkg -i linux-headers-4.11.8-all.deb
 	dpkg -i linux-headers-4.11.8.deb
 	dpkg -i linux-image-4.11.8.deb
-	cd  && rm -rf bbrmod
+	cd .. && rm -rf bbrmod
 }
 
 #删除多余内核
@@ -276,6 +276,24 @@ detele_kernel(){
 	fi
 }
 
+start(){
+	startbbrmod
+}
+
+install(){
+	check_sys_bbrmod
+}
+
 check_sys
 check_version
-check_sys_bbrmod
+action=$1
+[ -z $1 ] && action=install
+case "$action" in
+	install|sta)
+	${action}
+	;;
+	*)
+	echo "输入错误 !"
+	echo "用法: { install | start }"
+	;;
+esac
