@@ -245,12 +245,7 @@ detele_kernel(){
 				yum remove -y ${rpm_del}>/dev/null 2>&1
 				echo -e "卸载 ${rpm_del} 内核卸载完成，继续..."
 			done
-			rpm_total=`rpm -qa | grep kernel | grep -v "4.11.8" | grep -v "noarch" | wc -l`
-			if [ "${rpm_total}" = "0" ]; then
-				echo -e "内核卸载完毕，继续..."
-			else
-				echo -e " 内核卸载异常，请检查 !" && exit 1
-			fi
+			echo -e "内核卸载完毕，继续..."
 		else
 			echo -e " 检测到 内核 数量不正确，请检查 !" && exit 1
 		fi
@@ -264,12 +259,7 @@ detele_kernel(){
 				apt-get purge -y ${deb_del}>/dev/null 2>&1
 				echo -e "卸载 ${deb_del} 内核卸载完成，继续..."
 			done
-			deb_total=`dpkg -l|grep linux-image | awk '{print $2}' | grep -v "4.11.8" | wc -l`
-			if [ "${deb_total}" = "0" ]; then
-				echo -e "内核卸载完毕，继续..."
-			else
-				echo -e " 内核卸载异常，请检查 !" && exit 1
-			fi
+			echo -e "内核卸载完毕，继续..."
 		else
 			echo -e " 检测到 内核 数量不正确，请检查 !" && exit 1
 		fi
