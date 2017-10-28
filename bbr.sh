@@ -19,7 +19,7 @@ Tip="${Green_font_prefix}[注意]${Font_color_suffix}"
 
 #安装BBR内核
 installbbr(){
-	rpm --import http://${github}/bbr/RPM-GPG-KEY-elrepo.org
+	rpm --import http://${github}/bbr/centos/RPM-GPG-KEY-elrepo.org
 	yum install -y http://${github}/bbr/centos/${version}/${bit}/kernel-ml-4.11.8.rpm
 	yum remove -y kernel-headers
 	yum install -y http://${github}/bbr/centos/${version}/${bit}/kernel-ml-headers-4.11.8.rpm
@@ -94,7 +94,7 @@ check_sys(){
     fi
 }
 
-#检查Centos版本
+#检查Linux版本
 check_version(){
 	if [[ -s /etc/redhat-release ]]; then
 		version=`grep -oE  "[0-9.]+" /etc/redhat-release | cut -d . -f 1`
