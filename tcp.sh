@@ -40,8 +40,8 @@ installbbr(){
 	fi
 	detele_kernel
 	BBR_grub
-	echo -e "${Tip} 重启VPS后，请重新运行脚本开启魔改BBR ${Red_background_prefix} bash bbr.sh startbbrmod ${Font_color_suffix}"
-	stty erase '^H' && read -p "需要重启VPS后，才能开启BBR，是否现在重启 ? [Y/n] :" yn
+	echo -e "${Tip} 重启VPS后，请重新运行脚本开启${Red_font_prefix}BBR/BBR魔改版${Font_color_suffix}"
+	stty erase '^H' && read -p "需要重启VPS后，才能开启BBR/BBR魔改版，是否现在重启 ? [Y/n] :" yn
 	[ -z "${yn}" ] && yn="y"
 	if [[ $yn == [Yy] ]]; then
 		echo -e "${Info} VPS 重启中..."
@@ -51,15 +51,12 @@ installbbr(){
 
 #安装Lotserver内核
 installlot(){
-	kernel_version="4.11.8"
 	if [[ "${release}" == "centos" ]]; then
 		rpm --import http://${github}/bbr/${release}/RPM-GPG-KEY-elrepo.org
-		yum remove -y kernel-firmware
-		yum install -y http://vault.centos.org/6.8/updates/x86_64/Packages/kernel-firmware-2.6.32-642.15.1.el6.noarch.rpm
-		yum install -y http://vault.centos.org/6.8/updates/x86_64/Packages/kernel-2.6.32-642.15.1.el6.x86_64.rpm
+		yum install -y http://mirror.rc.usf.edu/compute_lock/elrepo/kernel/el7/x86_64/RPMS/kernel-ml-4.11.7-1.el7.elrepo.x86_64.rpm
 		yum remove -y kernel-headers
-		yum install -y http://vault.centos.org/6.8/updates/x86_64/Packages/kernel-headers-2.6.32-642.15.1.el6.x86_64.rpm
-		yum install -y http://vault.centos.org/6.8/updates/x86_64/Packages/kernel-devel-2.6.32-642.15.1.el6.x86_64.rpm
+		yum install -y http://mirror.rc.usf.edu/compute_lock/elrepo/kernel/el7/x86_64/RPMS/kernel-ml-headers-4.11.7-1.el7.elrepo.x86_64.rpm
+		yum install -y http://mirror.rc.usf.edu/compute_lock/elrepo/kernel/el7/x86_64/RPMS/kernel-ml-devel-4.11.7-1.el7.elrepo.x86_64.rpm
 	elif [[ "${release}" == "debian" || "${release}" == "ubuntu" ]]; then
 		mkdir bbr && cd bbr
 		wget -N --no-check-certificate http://${github}/bbr/debian-ubuntu/linux-headers-${kernel_version}-all.deb
@@ -73,13 +70,23 @@ installlot(){
 	fi
 	detele_kernel
 	BBR_grub
-	echo -e "${Tip} 重启VPS后，请重新运行脚本开启魔改BBR ${Red_background_prefix} bash bbr.sh startbbrmod ${Font_color_suffix}"
-	stty erase '^H' && read -p "需要重启VPS后，才能开启BBR，是否现在重启 ? [Y/n] :" yn
+	echo -e "${Tip} 重启VPS后，请重新运行脚本开启${Red_font_prefix}Lotserver${Font_color_suffix}"
+	stty erase '^H' && read -p "需要重启VPS后，才能开启Lotserver，是否现在重启 ? [Y/n] :" yn
 	[ -z "${yn}" ] && yn="y"
 	if [[ $yn == [Yy] ]]; then
 		echo -e "${Info} VPS 重启中..."
 		reboot
 	fi
+}
+
+#启用BBR
+startbbr(){
+	sed -i '/net.core.default_qdisc/d' /etc/sysctl.conf
+    sed -i '/net.ipv4.tcp_congestion_control/d' /etc/sysctl.conf
+	echo "net.core.default_qdisc=fq" >> /etc/sysctl.conf
+	echo "net.ipv4.tcp_congestion_control=tsunami" >> /etc/sysctl.conf
+	sysctl -p
+	echo -e "${Info}BBR启动成功！"
 }
 
 #编译并启用BBR魔改
@@ -103,6 +110,7 @@ startbbrmod(){
 			apt-get update
 		fi
 		apt-get -y install make gcc-4.9
+		mkdir bbrmod && cd bbrmod
 		wget -N --no-check-certificate http://${github}/bbr/tcp_tsunami.c
 		echo "obj-m:=tcp_tsunami.o" > Makefile
 		make -C /lib/modules/$(uname -r)/build M=`pwd` modules CC=/usr/bin/gcc-4.9
@@ -116,7 +124,7 @@ startbbrmod(){
 	echo "net.core.default_qdisc=fq" >> /etc/sysctl.conf
 	echo "net.ipv4.tcp_congestion_control=tsunami" >> /etc/sysctl.conf
 	sysctl -p
-    cd  && rm -rf bbrmod
+    cd .. && rm -rf bbrmod
 	echo -e "${Info}魔改版BBR启动成功！"
 }
 
@@ -138,6 +146,7 @@ Update_Shell(){
 	else
 		echo -e "当前已是最新版本[ ${sh_new_ver} ] !"
 	fi
+	start_menu
 }
 
 #开始菜单
@@ -175,13 +184,13 @@ case "$num" in
 	Update_Shell
 	;;
 	1)
-	installbbr
+	check_sys_bbrmod
 	;;
 	2)
-	installlot
+	check_sys_Lotsever
 	;;
 	3)
-	Start_ocserv
+	startbbr
 	;;
 	4)
 	startbbrmod
@@ -214,7 +223,7 @@ detele_kernel(){
 			for((integer = 1; integer <= ${rpm_total}; integer++)); do
 				rpm_del=`rpm -qa | grep kernel | grep -v "${kernel_version}" | grep -v "noarch" | head -${integer}`
 				echo -e "开始卸载 ${rpm_del} 内核..."
-				yum remove -y ${rpm_del}>/dev/null 2>&1
+				yum remove -y ${rpm_del} >/dev/null 2>&1
 				echo -e "卸载 ${rpm_del} 内核卸载完成，继续..."
 			done
 			echo -e "内核卸载完毕，继续..."
@@ -228,7 +237,7 @@ detele_kernel(){
 			for((integer = 1; integer <= ${deb_total}; integer++)); do
 				deb_del=`dpkg -l|grep linux-image | awk '{print $2}' | grep -v "${kernel_version}" | head -${integer}`
 				echo -e "开始卸载 ${deb_del} 内核..."
-				apt-get purge -y ${deb_del}>/dev/null 2>&1
+				apt-get purge -y ${deb_del} >/dev/null 2>&1
 				echo -e "卸载 ${deb_del} 内核卸载完成，继续..."
 			done
 			echo -e "内核卸载完毕，继续..."
@@ -299,79 +308,55 @@ check_version(){
 	fi
 }
 
-#检查安装bbr魔改版的系统要求
-check_sys_bbrmod(){
-	check_sys
+#检查安装bbr的系统要求
+check_sys_bbr(){
 	check_version
 	if [[ "${release}" == "centos" ]]; then
-		if [[ ${version} -gt "5" ]]; then
+		if [[ ${version} -ge "6" ]]; then
 			installbbr
 		else
-			echo -e "${Error} BBR魔改版不支持当前系统 ${release} ${version} ${bit} !" && exit 1
+			echo -e "${Error} BBR内核不支持当前系统 ${release} ${version} ${bit} !" && exit 1
 		fi
 	elif [[ "${release}" == "debian" ]]; then
-		if [[ ${version} -gt "7" ]]; then
+		if [[ ${version} -ge "8" ]]; then
 			installbbr
 		else
-			echo -e "${Error} BBR魔改版不支持当前系统 ${release} ${version} ${bit} !" && exit 1
+			echo -e "${Error} BBR内核不支持当前系统 ${release} ${version} ${bit} !" && exit 1
 		fi
 	elif [[ "${release}" == "ubuntu" ]]; then
 		if [[ ${version} -ge "14" ]]; then
 			installbbr
 		else
-			echo -e "${Error} BBR魔改版不支持当前系统 ${release} ${version} ${bit} !" && exit 1
+			echo -e "${Error} BBR内核不支持当前系统 ${release} ${version} ${bit} !" && exit 1
 		fi
 	else
-		echo -e "${Error} BBR魔改版不支持当前系统 ${release} ${version} ${bit} !" && exit 1
+		echo -e "${Error} BBR内核不支持当前系统 ${release} ${version} ${bit} !" && exit 1
 	fi
 }
 
-#检查安装bbr的系统要求
-check_sys_bbr(){
-	check_sys
-	check_version
-	if [[ "${release}" == "centos" ]]; then
-		if [[ ${version} -ge "6" ]]; then
-			installbbr
-		else
-			echo -e "${Error} BBR不支持当前系统 ${release} ${version} ${bit} !" && exit 1
-		fi
-	elif [[ "${release}" == "debian" ]]; then
-		if [[ ${version} -ge "7" ]]; then
-			installbbr
-		else
-			echo -e "${Error} BBR不支持当前系统 ${release} ${version} ${bit} !" && exit 1
-		fi
-	elif [[ "${release}" == "ubuntu" ]]; then
-		if [[ ${version} -ge "12" ]]; then
-			installbbr
-		else
-			echo -e "${Error} BBR不支持当前系统 ${release} ${version} ${bit} !" && exit 1
-		fi
-	else
-		echo -e "${Error} BBR不支持当前系统 ${release} ${version} ${bit} !" && exit 1
-	fi
-}
 
 #检查安装Lotsever的系统要求
 check_sys_Lotsever(){
-	check_sys
 	check_version
 	if [[ "${release}" == "centos" ]]; then
-		if [[ ${version} -ge "6" ]]; then
-			Lotsever
+		if [[ ${version} = "6" ]]; then
+			kernel_version="2.6.32-504"
+			installlot
+		elif [[ ${version} = "7" ]]; then
+			kernel_version="4.11.7"
+			installlot
 		else
 			echo -e "${Error} Lotsever不支持当前系统 ${release} ${version} ${bit} !" && exit 1
 		fi
 	elif [[ "${release}" == "debian" ]]; then
 		if [[ ${version} -ge "7" ]]; then
-			Lotsever
+			installlot
 		else
 			echo -e "${Error} Lotsever不支持当前系统 ${release} ${version} ${bit} !" && exit 1
 		fi
 	elif [[ "${release}" == "ubuntu" ]]; then
 		if [[ ${version} -ge "12" ]]; then
-			Lotsever
+			installlot
 		else
 			echo -e "${Error} Lotsever不支持当前系统 ${release} ${version} ${bit} !" && exit 1
 		fi
