@@ -52,11 +52,13 @@ installbbr(){
 #安装Lotserver内核
 installlot(){
 	if [[ "${release}" == "centos" ]]; then
-		rpm --import http://${github}/bbr/${release}/RPM-GPG-KEY-elrepo.org
-		yum install -y http://mirror.rc.usf.edu/compute_lock/elrepo/kernel/el7/x86_64/RPMS/kernel-ml-4.11.7-1.el7.elrepo.x86_64.rpm
+		rpm --import http://${github}/lotserver/${release}/RPM-GPG-KEY-elrepo.org
+		yum remove -y kernel-firmware
+		yum install -y http://${github}/lotserver/${release}/${version}/${bit}/kernel-firmware-${kernel_version}.rpm
+		yum install -y http://${github}/lotserver/${release}/${version}/${bit}/kernel-${kernel_version}.rpm
 		yum remove -y kernel-headers
-		yum install -y http://mirror.rc.usf.edu/compute_lock/elrepo/kernel/el7/x86_64/RPMS/kernel-ml-headers-4.11.7-1.el7.elrepo.x86_64.rpm
-		yum install -y http://mirror.rc.usf.edu/compute_lock/elrepo/kernel/el7/x86_64/RPMS/kernel-ml-devel-4.11.7-1.el7.elrepo.x86_64.rpm
+		yum install -y http://${github}/lotserver/${release}/${version}/${bit}/kernel-headers-${kernel_version}.rpm
+		yum install -y http://${github}/lotserver/${release}/${version}/${bit}/kernel-devel-${kernel_version}.rpm
 	elif [[ "${release}" == "debian" || "${release}" == "ubuntu" ]]; then
 		mkdir bbr && cd bbr
 		wget -N --no-check-certificate http://${github}/bbr/debian-ubuntu/linux-headers-${kernel_version}-all.deb
@@ -128,6 +130,22 @@ startbbrmod(){
 	echo -e "${Info}魔改版BBR启动成功！"
 }
 
+#启用Lotserver
+startlotserver(){
+	sed -i '/net.core.default_qdisc/d' /etc/sysctl.conf
+    sed -i '/net.ipv4.tcp_congestion_control/d' /etc/sysctl.conf
+	wget --no-check-certificate -O appex.sh https://raw.githubusercontent.com/0oVicero0/serverSpeeder_Install/master/appex.sh && chmod +x appex.sh && bash appex.sh install
+	start_menu
+}
+
+#卸载全部加速
+remove_all(){
+	sed -i '/net.core.default_qdisc/d' /etc/sysctl.conf
+    sed -i '/net.ipv4.tcp_congestion_control/d' /etc/sysctl.conf
+	wget --no-check-certificate -O appex.sh https://raw.githubusercontent.com/0oVicero0/serverSpeeder_Install/master/appex.sh && chmod +x appex.sh && bash appex.sh uninstall
+	start_menu
+}
+
 #更新脚本
 Update_Shell(){
 	echo -e "当前版本为 [ ${sh_ver} ]，开始检测最新版本..."
@@ -196,10 +214,10 @@ case "$num" in
 	startbbrmod
 	;;
 	5)
-	Restart_ocserv
+	startlotserver
 	;;
 	6)
-	Set_Pass
+	remove_all
 	;;
 	7)
 	View_Config
@@ -343,7 +361,8 @@ check_sys_Lotsever(){
 			kernel_version="2.6.32-504"
 			installlot
 		elif [[ ${version} = "7" ]]; then
-			kernel_version="4.11.7"
+			yum -y install net-tools
+			kernel_version="3.10.0-327"
 			installlot
 		else
 			echo -e "${Error} Lotsever不支持当前系统 ${release} ${version} ${bit} !" && exit 1
@@ -364,6 +383,7 @@ check_sys_Lotsever(){
 		echo -e "${Error} Lotsever不支持当前系统 ${release} ${version} ${bit} !" && exit 1
 	fi
 }
+
 
 #############系统检测组件#############
 check_sys
