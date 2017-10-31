@@ -59,14 +59,20 @@ installlot(){
 		yum remove -y kernel-headers
 		yum install -y http://${github}/lotserver/${release}/${version}/${bit}/kernel-headers-${kernel_version}.rpm
 		yum install -y http://${github}/lotserver/${release}/${version}/${bit}/kernel-devel-${kernel_version}.rpm
-	elif [[ "${release}" == "debian" || "${release}" == "ubuntu" ]]; then
+	elif [[ "${release}" == "ubuntu" ]]; then
 		mkdir bbr && cd bbr
-		wget -N --no-check-certificate http://${github}/bbr/debian-ubuntu/linux-headers-${kernel_version}-all.deb
-		wget -N --no-check-certificate http://${github}/bbr/debian-ubuntu/${bit}/linux-headers-${kernel_version}.deb
-		wget -N --no-check-certificate http://${github}/bbr/debian-ubuntu/${bit}/linux-image-${kernel_version}.deb
+		wget -N --no-check-certificate http://${github}/lotserver/${release}/${bit}/linux-headers-${kernel_version}-all.deb
+		wget -N --no-check-certificate http://${github}/lotserver/${release}/${bit}/linux-headers-${kernel_version}.deb
+		wget -N --no-check-certificate http://${github}/lotserver/${release}/${bit}/linux-image-${kernel_version}.deb
 	
 		dpkg -i linux-headers-${kernel_version}-all.deb
 		dpkg -i linux-headers-${kernel_version}.deb
+		dpkg -i linux-image-${kernel_version}.deb
+		cd .. && rm -rf bbr
+	elif [[ "${release}" == "debian" ]]; then
+		mkdir bbr && cd bbr
+		wget -N --no-check-certificate http://${github}/lotserver/${release}/${bit}/linux-image-${kernel_version}.deb
+	
 		dpkg -i linux-image-${kernel_version}.deb
 		cd .. && rm -rf bbr
 	fi
@@ -370,13 +376,25 @@ check_sys_Lotsever(){
 		fi
 	elif [[ "${release}" == "debian" ]]; then
 		if [[ ${version} -ge "7" ]]; then
-			installlot
+			if [[ ${bit} = "x64" ]]; then
+				kernel_version="3.16.0-4"
+				installlot
+			elif [[ ${bit} = "x32" ]]; then
+				kernel_version="3.2.0-4"
+				installlot
+			fi
 		else
 			echo -e "${Error} Lotsever不支持当前系统 ${release} ${version} ${bit} !" && exit 1
 		fi
 	elif [[ "${release}" == "ubuntu" ]]; then
 		if [[ ${version} -ge "12" ]]; then
-			installlot
+			if [[ ${bit} = "x64" ]]; then
+				kernel_version="4.4.0-47"
+				installlot
+			elif [[ ${bit} = "x32" ]]; then
+				kernel_version="3.13.0-29"
+				installlot
+			fi
 		else
 			echo -e "${Error} Lotsever不支持当前系统 ${release} ${version} ${bit} !" && exit 1
 		fi
